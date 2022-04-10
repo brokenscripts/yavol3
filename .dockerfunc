@@ -1,0 +1,169 @@
+#!/bin/bash
+# Bash wrappers for volatility3 docker run commands
+
+volatility3(){
+  # Store original arguments for re-use
+  local INPUTARGS="$@"
+  # Create a modified argument variable for passing into docker
+  local MODIFIEDARGS=()
+
+  # Find the file argument to dynamically bind that directory in Vol3 as the /workdir
+  # Then modify file argument to be based on being inside docker instead of the host
+  for i in "$@"; do
+    case $i in
+      '-f') # Explicitly look for -f
+        INPUTFILE="$2"
+        MODIFIEDARGS+="$i "
+        MODIFIEDARGS+=$(basename "${INPUTFILE} ")
+        shift # past argument
+        shift # past value
+        ;;
+      *)  # Any argument not specified above
+        MODIFIEDARGS+="$1 "
+        shift # past value
+        ;;
+    esac
+  done
+
+  # If the file is valid, then set up the bind mount and run with the modified file arg
+  if [[ -e "${INPUTFILE}" ]]
+  then
+    MYPATH=$(realpath "${INPUTFILE}")
+    MYDIR=$(dirname "${MYPATH}")
+    MYFILE=$(basename "${INPUTFILE}")
+    ARGS=${MODIFIEDARGS}
+  else
+    # Either the file specified wasn't found, or the bash test failed.  
+    # Bind the current shell's ${PWD} to /workdir as the fallback
+    # Run the docker container with the arguments specified as is
+    echo "[!] Warning: File option (-f) not found, bind mounting PWD!"
+    MYDIR=${PWD}
+    ARGS=${INPUTARGS}
+  fi
+
+  # Do not include -t (TTY) when executing single use commands
+  docker run \
+  -i --rm \
+  --user $(id -u):$(id -g) \
+  -v "${MYDIR}":/workdir \
+  -v "${HOME}/symbols":/symbols \
+  brokenscripts/yavol3:latest ${ARGS}
+}
+
+alias vol3="volatility3"
+
+volshell(){
+  # Store original arguments for re-use
+  local INPUTARGS="$@"
+  # Create a modified argument variable for passing into docker
+  local MODIFIEDARGS=()
+
+  # Find the file argument to dynamically bind that directory in Vol3 as the /workdir
+  # Then modify file argument to be based on being inside docker instead of the host
+  for i in "$@"; do
+    case $i in
+      '-f') # Explicitly look for -f
+        INPUTFILE="$2"
+        MODIFIEDARGS+="$i "
+        MODIFIEDARGS+=$(basename "${INPUTFILE} ")
+        shift # past argument
+        shift # past value
+        ;;
+      *)  # Any argument not specified above
+        MODIFIEDARGS+="$1 "
+        shift # past value
+        ;;
+    esac
+  done
+
+  # If the file is valid, then set up the bind mount and run with the modified file arg
+  if [[ -e "${INPUTFILE}" ]]
+  then
+    MYPATH=$(realpath "${INPUTFILE}")
+    MYDIR=$(dirname "${MYPATH}")
+    MYFILE=$(basename "${INPUTFILE}")
+    ARGS=${MODIFIEDARGS}
+  else
+    # Either the file specified wasn't found, or the bash test failed.  
+    # Bind the current shell's ${PWD} to /workdir as the fallback
+    # Run the docker container with the arguments specified as is
+    echo "[!] Warning: File option (-f) not found, bind mounting PWD!"
+    MYDIR=${PWD}
+    ARGS=${INPUTARGS}
+  fi
+
+  # -t (TTY) is needed in this instance
+  docker run \
+  -it --rm \
+  --user $(id -u):$(id -g) \
+  --entrypoint volshell \
+  -v "${MYDIR}":/workdir \
+  -v "${HOME}/symbols":/symbols \
+  brokenscripts/yavol3:latest ${ARGS}
+}
+
+pdbconv(){
+  docker run \
+  -i --rm \
+  --user $(id -u):$(id -g) \
+  --entrypoint pdbconv \
+  -v "${PWD}":/workdir \
+  -v "${HOME}/symbols":/symbols \
+  brokenscripts/yavol3:latest
+}
+
+alias pdbconv.py="pdbconv"
+
+volatility3-ash(){
+  # Store original arguments for re-use
+  local INPUTARGS="$@"
+  # Create a modified argument variable for passing into docker
+  local MODIFIEDARGS=()
+
+  # Find the file argument to dynamically bind that directory in Vol3 as the /workdir
+  # Then modify file argument to be based on being inside docker instead of the host
+  for i in "$@"; do
+    case $i in
+      '-f') # Explicitly look for -f
+        INPUTFILE="$2"
+        MODIFIEDARGS+="$i "
+        MODIFIEDARGS+=$(basename "${INPUTFILE} ")
+        shift # past argument
+        shift # past value
+        ;;
+      *)  # Any argument not specified above
+        MODIFIEDARGS+="$1 "
+        shift # past value
+        ;;
+    esac
+  done
+
+  # If the file is valid, then set up the bind mount and run with the modified file arg
+  if [[ -e "${INPUTFILE}" ]]
+  then
+    MYPATH=$(realpath "${INPUTFILE}")
+    MYDIR=$(dirname "${MYPATH}")
+    MYFILE=$(basename "${INPUTFILE}")
+    ARGS=${MODIFIEDARGS}
+  else
+    # Either the file specified wasn't found, or the bash test failed.  
+    # Bind the current shell's ${PWD} to /workdir as the fallback
+    # Run the docker container with the arguments specified as is
+    echo "[!] Warning: File option (-f) not found, bind mounting PWD!"
+    MYDIR=${PWD}
+    ARGS=${INPUTARGS}
+  fi
+
+  # -t (TTY) is needed in this instance
+  docker run \
+  -it --rm \
+  --entrypoint /bin/ash \
+  --user $(id -u):$(id -g) \
+  -v "${MYDIR}":/workdir \
+  -v "${HOME}/symbols":/symbols \
+  brokenscripts/yavol3:latest
+}
+
+alias vol3-ash="volatility3-ash"
+alias volatility3-sh="volatility3-ash"
+alias vol3-sh="volatility3-ash"
